@@ -135,7 +135,8 @@ CREATE TABLE IF NOT EXISTS groups (
 	name       TEXT PRIMARY KEY,
 	sort_order INTEGER NOT NULL DEFAULT 0,
 	path       TEXT NOT NULL DEFAULT '',
-	archived   INTEGER NOT NULL DEFAULT 0
+	archived   INTEGER NOT NULL DEFAULT 0,
+	note       TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS settings (
 	key   TEXT PRIMARY KEY,
@@ -227,6 +228,7 @@ CREATE TABLE IF NOT EXISTS settings (
 		`ALTER TABLE sessions ADD COLUMN tmux_socket TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN last_prompt TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN relaunch_snapshot TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE groups ADD COLUMN note TEXT NOT NULL DEFAULT ''`,
 	}
 	for _, migration := range migrations {
 		if _, err := s.db.Exec(migration); err != nil {
@@ -1326,10 +1328,14 @@ type Group struct {
 	// "" to inherit from the nearest ancestor with a choice, else the
 	// global setting.
 	Worktree string
+	// Note is what the group is for, written by the user or appended by an
+	// agent working in it. It travels with the group: a rename or a move
+	// rewrites the row's name and the note rides along.
+	Note string
 }
 
 func (s *Store) Groups() ([]Group, error) {
-	rows, err := s.db.Query(`SELECT name, path, archived, worktree FROM groups ORDER BY sort_order, name`)
+	rows, err := s.db.Query(`SELECT name, path, archived, worktree, note FROM groups ORDER BY sort_order, name`)
 	if err != nil {
 		return nil, err
 	}
@@ -1338,7 +1344,7 @@ func (s *Store) Groups() ([]Group, error) {
 	for rows.Next() {
 		var g Group
 		var archived int
-		if err := rows.Scan(&g.Name, &g.Path, &archived, &g.Worktree); err != nil {
+		if err := rows.Scan(&g.Name, &g.Path, &archived, &g.Worktree, &g.Note); err != nil {
 			return nil, err
 		}
 		g.Archived = archived != 0
