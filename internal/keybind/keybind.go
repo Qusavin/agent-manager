@@ -248,6 +248,7 @@ const (
 	MarkIdle    = "mark_idle"
 	Rename      = "rename"
 	Move        = "move"
+	Note        = "note"
 	Restart     = "restart"
 	Kill        = "kill"
 	KillAll     = "kill_all"
@@ -297,6 +298,7 @@ var listActions = []Action{
 	{MarkIdle, "mark a finished session idle", keys(".")},
 	{Rename, "rename the session, edit the group", keys("r")},
 	{Move, "move the row to another group", keys("m")},
+	{Note, "open the group's note", keys("N")},
 	{Editor, "open the directory in your editor", keys("o")},
 	{Restart, "restart the session on an empty context", keys("R")},
 	{Kill, "kill the session, or every live one in the group", keys("x")},

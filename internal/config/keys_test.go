@@ -196,7 +196,7 @@ review = "none"
 editor = "none"
 `)
 	list := keybind.DefaultList().
-		With(keybind.NewSession, bindingOf(t, "N")).
+		With(keybind.NewSession, bindingOf(t, "Z")).
 		With(keybind.Prompt, bindingOf(t, "space", "p")).
 		With(keybind.Quit, bindingOf(t))
 	if err := SaveKeys(dir, list); err != nil {
@@ -207,7 +207,7 @@ editor = "none"
 	for _, want := range []string{
 		"[keybindings.session]\ndetach = \"f9\"",
 		"[keybindings.list]",
-		`new_session = "N"`,
+		`new_session = "Z"`,
 		`prompt = ["space", "p"]`,
 		`quit = "none"`,
 		`up = ["up", "k"]`,

@@ -50,6 +50,8 @@ func (m *Model) View() string {
 		frame = m.viewDiffFull()
 	case modeNotices:
 		frame = m.viewNotices()
+	case modeNote:
+		frame = m.viewNote()
 	default:
 		frame = m.viewListFrame()
 	}

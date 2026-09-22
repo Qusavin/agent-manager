@@ -76,6 +76,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDiffKey(msg)
 	case modeFocus:
 		return m.handleFocusKey(msg)
+	case modeNote:
+		return m.handleNoteKey(msg)
 	case modeNotices:
 		return m.handleNoticesKey(msg)
 	case modeHelp:
@@ -192,6 +194,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.openRename()
 	case keybind.Move:
 		m.openMove()
+	case keybind.Note:
+		m.openNote()
 	case keybind.Messages:
 		m.openNotices("")
 	case keybind.Help:

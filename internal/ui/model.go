@@ -50,6 +50,9 @@ const (
 	// modeFocus routes the keyboard into the selected session's pane while
 	// the list and live preview stay on screen.
 	modeFocus
+	// modeNote holds a group's note open for editing: what the group is
+	// for, written here and read by the agents working in it.
+	modeNote
 )
 
 type treeRow struct {
@@ -88,6 +91,9 @@ type Model struct {
 	groups         []string
 	groupPaths     map[string]string
 	groupWorktrees map[string]string
+	// groupNotes holds only the groups that have a note, so a row can ask
+	// whether to wear the note mark without reading the database.
+	groupNotes map[string]string
 	// worktreeRepos memoizes which spawn directories sit inside a git
 	// repo, so gating the worktree toggle does not shell out to git on
 	// every frame. Entries expire, so a directory git-initialised while
@@ -218,6 +224,7 @@ type Model struct {
 	// back to the terminal, so a drag selects its text.
 	mouseReleased     bool
 	rename            renameTarget
+	note              noteEditor
 	fork              forkState
 	quick             quickState
 	lastSpawnTool     string
@@ -537,6 +544,7 @@ type refreshMsg struct {
 	groups         []string
 	groupPaths     map[string]string
 	groupWorktrees map[string]string
+	groupNotes     map[string]string
 	archivedGroups map[string]bool
 	snap           sysstat.Snapshot
 	snapOK         bool
@@ -1480,6 +1488,7 @@ func (m *Model) handleMsg(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.groups = msg.groups
 		m.groupPaths = msg.groupPaths
 		m.groupWorktrees = msg.groupWorktrees
+		m.groupNotes = msg.groupNotes
 		m.archivedGroups = msg.archivedGroups
 		m.agents = msg.agents
 		m.queuedMessages = msg.queuedMessages

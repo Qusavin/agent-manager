@@ -918,6 +918,11 @@ func (m *Model) renderGroupEntry(entry treeRow, selected bool, width int, pad, g
 		}
 	}
 	head := pad + guides + subtleStyle.Render(marker) + " " + m.highlightQuery(name, nameStyle)
+	// A group carrying a note says so beside its name, so standing context
+	// is visible from the tree rather than only once the card is open.
+	if m.groupNote(entry.group) != "" {
+		head += " " + lipgloss.NewStyle().Foreground(colorAccent).Render(noteMark)
+	}
 
 	// What the group is doing rides on the same line as its name, so a
 	// folded group still reports its subtree without being opened. It is
@@ -1021,6 +1026,14 @@ func (m *Model) contentLines(width, height int) []contentLine {
 	if rest >= 3 {
 		if group, ok := m.selectedGroup(); ok {
 			body = append(body, contentLine{rule: true})
+			// The note takes the top of the column, up to half of it, so a
+			// group with standing context reads it here and still sees the
+			// agents filed under it.
+			if note := m.noteLines(group, inner, min(rest-1, max(rest/2, 2))); len(note) > 0 {
+				body = append(body, ours(note)...)
+				body = append(body, contentLine{})
+				rest -= len(note) + 1
+			}
 			body = append(body, ours(splitLines(m.viewGroupAgents(group, inner, rest)))...)
 		} else {
 			separator := contentLine{rule: true}

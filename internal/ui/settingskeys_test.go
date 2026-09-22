@@ -309,9 +309,9 @@ func TestListPickerMovesAKeyAndTheListFollows(t *testing.T) {
 	}
 	m.settings.keyCursor = listRow(t, m, keybind.NewSession)
 	m.pressInPicker(t, tea.KeyMsg{Type: tea.KeyEnter})
-	m.pressInPicker(t, runeKey("N"))
-	if got := m.settings.tables[1].Binding(keybind.NewSession).Label(); got != "N" {
-		t.Fatalf("new_session = %q, want N", got)
+	m.pressInPicker(t, runeKey("Z"))
+	if got := m.settings.tables[1].Binding(keybind.NewSession).Label(); got != "Z" {
+		t.Fatalf("new_session = %q, want Z", got)
 	}
 	if cmd := m.pressInPicker(t, tea.KeyMsg{Type: tea.KeyEsc}); cmd != nil {
 		t.Fatal("saving the list table has no tmux work to do")
@@ -320,7 +320,7 @@ func TestListPickerMovesAKeyAndTheListFollows(t *testing.T) {
 		t.Fatalf("saving reported %q", m.errBar.text)
 	}
 	saved := savedConfig(t, m)
-	if !strings.Contains(saved, "[keybindings.list]") || !strings.Contains(saved, `new_session = "N"`) {
+	if !strings.Contains(saved, "[keybindings.list]") || !strings.Contains(saved, `new_session = "Z"`) {
 		t.Fatalf("config.toml should carry the list table:\n%s", saved)
 	}
 	if strings.Contains(saved, "[keybindings.session]") {
@@ -335,7 +335,7 @@ func TestListPickerMovesAKeyAndTheListFollows(t *testing.T) {
 	if m.mode == modeForm {
 		t.Fatal("n should no longer open the new-session form")
 	}
-	m.pressInPicker(t, runeKey("N"))
+	m.pressInPicker(t, runeKey("Z"))
 	if m.mode != modeForm {
 		t.Fatalf("N should open the new-session form, mode = %v", m.mode)
 	}
