@@ -33,6 +33,7 @@ Tell your agent what you want to review in Agent Manager. Your agent will set up
 | `K` / `J` (or `shift+↑` / `shift+↓`) | Reorder session or group among its visible siblings |
 | `m` | Move a session to a group, a terminal into a session, or a group under another group |
 | `r` | Rename session / edit tool; edit group name and default path |
+| `N` | Open the note of the group the cursor is in: what the work is for, and what has been settled. On a session row it opens the note of the group that session is filed under |
 | `y` | Copy the selected session's newest reply to the system clipboard, without attaching |
 | `x` | Kill the selected session, or every live session under a group: frees the RAM their agents hold, and the rows stay for `v` |
 | `X` | Kill every live session in view |
@@ -193,6 +194,7 @@ Every session of an MCP-capable tool carries the agent-manager MCP server on spa
 | `kill_session` | Stop a running agent, keeping its row and last screen |
 | `archive_session` | File a finished session out of the active list, or restore it |
 | `task` | The shared work list in one tool: `action` is `list`, `create`, `claim`, `finish`, `release` or `delete` |
+| `note` | The standing note on the caller's group: `action` is `read` or `append` |
 | `reserve_files` | Declare the files this session is editing, and see who else claims them |
 | `release_files` | Give those claims back |
 | `list_reservations` | See what every session is editing right now |
@@ -245,7 +247,7 @@ Every one of these tools acts on the user's machine. Agents should treat `send_t
 
 Registration is per tool. Claude gets a generated `--mcp-config` file. Codex gets `-c mcp_servers...` overrides. OpenCode gets an `OPENCODE_CONFIG` merge file. Grok, Gemini, and Command Code each get a one-time `mcp add --scope user` entry on their first launch. Hermes gets its own one-time `mcp add` flow, which needs the MCP SDK its installer treats as optional: a Hermes still missing it refuses the spawn with a dialog offering the `pip install mcp` line for the Python that runs Hermes, read from `hermes --version`, so a Hermes session always carries these tools. A spawn whose CLI is not on PATH is refused the same way, with the vendor's portable installer for a built-in agent, or the package manager on this machine for anything else. When that command is the vendor's installer, `c` copies it and `i` runs it in a shell tab named after the CLI, where you can watch it and answer its prompts; when it exits 0 and puts the CLI on PATH the refused spawn goes ahead on its own, and a failure, or an installer that leaves the CLI somewhere PATH does not name, leaves the tab open with the output and the reason on the status line. A package-manager line stays a suggestion to read, since the package that carries a tool's name is yours to choose. The dialog also hands the mouse back to the terminal while it is up, so a drag over the command selects it.
 
-Pi does not include an MCP client. Its sessions reach the same workspace through the subcommands: `agent-manager --help` lists them, from `sessions`, `spawn`, `send` and `wait` to the shared task list, file reservations, terminals and the review declarations.
+Pi does not include an MCP client. Its sessions reach the same workspace through the subcommands: `agent-manager --help` lists them, from `sessions`, `spawn`, `send` and `wait` to the shared task list, the group note, file reservations, terminals and the review declarations.
 
 ### Bugs and ideas
 
@@ -293,6 +295,16 @@ Each point sent to the agent carries a stable comment id. After addressing it, a
 ![folding the tree, creating a nested group, reordering, and archiving one](demo-groups.gif)
 
 Groups are paths (`backend/api/auth`) forming a tree of unlimited depth. Sessions can live at any node, including the root. Create subgroups inline with `g`, reorder both groups and sessions with `K` / `J` (or `shift+↑↓`; the order persists), fold a subtree with `enter` on its row, fold or unfold the whole tree with `F`, hide or restore empty groups visually with `e`, and edit a group's name and default path with `r`. On a session, `r` renames it and `tab` cycles the tool. Quitting one CLI in a session's pane and starting another there moves the row onto that CLI on the next poll, with the status rules and the revive command that come with it. The move needs one answer: exactly one built-in CLI has to run the binary the pane is running, so a CLI whose process name is its runtime rather than itself (one installed as a node script, say) leaves the row where it is and `tab` sets it by hand.
+
+## Group notes
+
+A group is usually one piece of work, and the context that work carries — what it is for, the decisions already made, the gotcha that cost an afternoon — has nowhere to live: a session holds it until its conversation ends, and the next agent spawned into the group starts without it.
+
+`N` opens the note of the group the cursor is in, in a card inside the manager. It is free text; `esc` saves and closes, the way Settings does. A group carrying a note wears `✎` after its name in the tree, and the note reads at the top of the right-hand column whenever that group is selected, above the agents filed under it. On a session row `N` opens the note of the group that session belongs to, since that is the work it is doing. The root holds no note: it has no row of its own to keep one on.
+
+The note travels with the group. Renaming it or moving it under another parent rewrites the group's row, and the note rides along.
+
+Agents share it. An MCP-capable session reads it with the `note` tool (`action: read`) and adds to it with `action: append`; a session without an MCP client does the same from its shell with `agent-manager note read` and `agent-manager note append <text>`. The server's instructions tell an agent to read the note when a task starts and to append what the next agent would otherwise have to rediscover, so "put that in the note" is one call away. An append only ever adds a paragraph to the end, so several sessions writing at once, and the text you typed yourself, all survive; replacing the note is yours to do in the editor. A note caps at 16000 characters, and a write past that is refused rather than truncated.
 
 ## Status
 
