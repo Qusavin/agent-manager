@@ -69,6 +69,8 @@ type fakeSessionCommands struct {
 	created       sessioncmd.Session
 	screen        sessioncmd.SessionScreen
 	groups        []sessioncmd.Group
+	note          sessioncmd.GroupNote
+	appendedNote  string
 	createdOpts   sessioncmd.CreateSessionOptions
 	sentID        string
 	sentMessage   string
@@ -201,6 +203,19 @@ func (f *fakeSessionCommands) ReleaseFiles(_ string, patterns []string) (int, er
 
 func (f *fakeSessionCommands) Reservations(string) ([]sessioncmd.Reservation, error) {
 	return f.reservations, f.err
+}
+
+func (f *fakeSessionCommands) Note(string) (sessioncmd.GroupNote, error) {
+	return f.note, f.err
+}
+
+func (f *fakeSessionCommands) AppendNote(_ string, text string) (sessioncmd.GroupNote, error) {
+	f.appendedNote = text
+	if f.note.Note != "" {
+		f.note.Note += "\n\n"
+	}
+	f.note.Note += text
+	return f.note, f.err
 }
 
 func (f *fakeSessionCommands) Groups(string) ([]sessioncmd.Group, error) {
@@ -1253,4 +1268,54 @@ func TestCoordinationOffNeverMentionsTheOtherSessions(t *testing.T) {
 			t.Fatalf("a solo session keeps its own tools, missing %q in %q", want, instructions)
 		}
 	}
+}
+
+// The note tool reads the calling session's group note and appends to it,
+// so an agent told "put that in the note" has one call for it.
+func TestNoteToolReadsAndAppends(t *testing.T) {
+	fake := &fakeSessionCommands{note: sessioncmd.GroupNote{Group: "backend", Note: "ship the auth rewrite"}}
+	session := connectServer(t, serverWithFakes(t, fake))
+
+	text, isErr := callText(t, session, "note", map[string]any{"action": "read"})
+	if isErr || !strings.Contains(text, "ship the auth rewrite") {
+		t.Fatalf("read returned %q (error %t)", text, isErr)
+	}
+	// An omitted action reads, so a client that leaves it out is answered
+	// rather than refused.
+	if text, isErr := callText(t, session, "note", map[string]any{}); isErr || !strings.Contains(text, "ship the auth rewrite") {
+		t.Fatalf("a bare call returned %q (error %t)", text, isErr)
+	}
+
+	text, isErr = callText(t, session, "note", map[string]any{"action": "append", "note": "the queue is at-least-once"})
+	if isErr {
+		t.Fatalf("append returned an error: %q", text)
+	}
+	if fake.appendedNote != "the queue is at-least-once" {
+		t.Fatalf("the tool appended %q", fake.appendedNote)
+	}
+	// The result carries the whole note, so the agent sees what the group
+	// now says rather than only its own line.
+	if !strings.Contains(text, "ship the auth rewrite") || !strings.Contains(text, "the queue is at-least-once") {
+		t.Fatalf("append returned %q, want the note as it now stands", text)
+	}
+
+	if text, isErr := callText(t, session, "note", map[string]any{"action": "replace"}); !isErr {
+		t.Fatalf("an unknown action was accepted: %q", text)
+	}
+}
+
+// The note describes the calling session's own group, so it stays when
+// the user turns coordination off and the cross-session tools go away.
+func TestNoteSurvivesCoordinationOff(t *testing.T) {
+	session := connectServer(t, NewServer(t.TempDir(), "abc123", "test", false))
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range tools.Tools {
+		if tool.Name == "note" {
+			return
+		}
+	}
+	t.Fatal("a solo session lost its group note")
 }

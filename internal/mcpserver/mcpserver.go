@@ -84,6 +84,11 @@ type taskArgs struct {
 	DependsOn []string `json:"depends_on,omitempty" jsonschema:"create: ids of tasks that must be done first; a task with unfinished dependencies cannot be claimed"`
 }
 
+type noteArgs struct {
+	Action string `json:"action,omitempty" jsonschema:"read (the default) or append"`
+	Note   string `json:"note,omitempty" jsonschema:"append: the paragraph to add, written for whoever works in this group next"`
+}
+
 type reserveFilesArgs struct {
 	Paths []string `json:"paths" jsonschema:"files or globs you are about to edit, such as internal/store/*.go"`
 	Mode  string   `json:"mode,omitempty" jsonschema:"exclusive (default) means nobody else should edit these paths; shared means others may edit them too"`
@@ -186,6 +191,8 @@ type sessionCommands interface {
 	Reserve(sessionID string, patterns []string, mode, note string, ttl time.Duration) (sessioncmd.ReserveResult, error)
 	ReleaseFiles(sessionID string, patterns []string) (int, error)
 	Reservations(sessionID string) ([]sessioncmd.Reservation, error)
+	Note(sessionID string) (sessioncmd.GroupNote, error)
+	AppendNote(sessionID, text string) (sessioncmd.GroupNote, error)
 	Groups(sessionID string) ([]sessioncmd.Group, error)
 	CreateGroup(sessionID, path, directory string) (sessioncmd.Group, error)
 	DeleteGroup(sessionID, path string) (sessioncmd.GroupRemoval, error)
@@ -197,27 +204,27 @@ type sessionCommands interface {
 // subagents instead. Claude Code truncates the block at 2048 characters, so
 // it stays under that; what individual tool descriptions already carry (the
 // review targets, the queueing rules) is left to them.
-const serverInstructions = `Agent Manager runs this conversation in one of the user's managed tmux sessions. The others are separate CLI processes with contexts of their own, running any CLI the user chose (Claude Code, Codex, Gemini), never subagents of this conversation. These tools operate that workspace. Use them whenever the conditions below apply, without waiting to be asked.
+const serverInstructions = `Agent Manager runs this conversation in one of the user's managed tmux sessions. The others are separate CLI processes with their own contexts, on any CLI the user chose (Claude Code, Codex, Gemini), never subagents of this conversation. These tools operate that workspace. Use them whenever the conditions below apply, without waiting to be asked. Read note for this group's context; append what the next agent would otherwise rediscover.
 
-Delegating to other agents. When the work holds two or more deliverables that could be built at once, or the user asks for parallel work, a second opinion or another agent: call list_sessions, reuse a relevant idle session, otherwise create_session per part, each with a descriptive name and a prompt stating the whole task, as it cannot see this conversation. Repo work takes worktree: true so parallel agents never share a checkout; where they do, reserve_files before editing. Then read_session, send_session to answer or redirect an agent, and wait_for_session when your next step needs one finished. Put the plan on the shared task list with the task tool, which spawned agents claim from. Group related spawns with create_group, archive_session once done. Sessions spend the user's tokens: one per workstream, not per step.
+Delegating to other agents. When the work holds two or more deliverables buildable at once, or the user asks for parallel work, a second opinion or another agent: call list_sessions, reuse a relevant idle session, otherwise create_session per part, each with a descriptive name and a prompt stating the whole task it cannot see from here. Repo work takes worktree: true so agents never share a checkout; where they do, reserve_files before editing. Then read_session, send_session to answer or redirect one, and wait_for_session when your next step needs one finished. Put the plan on the shared task list with the task tool, which spawns claim from. Group spawns with create_group, archive_session once done. Sessions spend the user's tokens: one per workstream, not per step.
 
-Shell work the user should see. Open a terminal when the user should watch, attach or take over, as with SSH into a host. Keep one-shot local commands in your normal tools. Call list_terminals first and reuse a running terminal when possible. create_terminal nests under this session unless nest is false, which another group needs. Use send_terminal and read_terminal, and close_terminal when that job is done unless it is left for the user.
+Shell work the user should see. Open a terminal when the user should watch, attach or take over, as with SSH. Keep one-shot local commands in your normal tools. Call list_terminals first and reuse a running terminal when possible. create_terminal nests under this session unless nest is false, needed for another group. Use send_terminal and read_terminal, and close_terminal when that job is done unless it is left for the user.
 
-Bugs and ideas. When the user hits a bug in the manager itself or asks for something it lacks, offer report_issue: it previews first and files only once the user approves.
+Bugs and ideas. When the user hits a bug in the manager or asks for something it lacks, offer report_issue: it previews first and files only once the user approves.
 
-Everything here acts on the user's machine: create_session and create_terminal start real processes, send_terminal runs commands, and kill_session ends a running agent. Treat them with the care and approval normal shell execution needs.`
+Everything here acts on the user's machine: create_session and create_terminal start real processes, send_terminal runs commands, kill_session ends a running agent. Treat them with the care normal shell execution needs.`
 
 // soloInstructions replace serverInstructions where the user turned
 // coordination off: the session keeps the tools that act on itself and
 // on its own terminals, and is told nothing about the sessions beside
 // it, so it spends its tokens on the task it was given.
-const soloInstructions = `Agent Manager runs this conversation in one of the user's managed tmux sessions. These tools operate that session. Use them whenever the conditions below apply, without waiting to be asked.
+const soloInstructions = `Agent Manager runs this conversation in one of the user's managed tmux sessions. These tools operate that session. Use them whenever the conditions below apply, without waiting to be asked. Read note for this group's context; append what the next agent would otherwise rediscover.
 
-Shell work the user should see. Open a terminal when the user should watch, attach or take over, as with SSH into a host. Keep one-shot local commands in your normal tools. Call list_terminals first and reuse a running terminal when possible. Use send_terminal and read_terminal, and close_terminal when that job is done unless it is left for the user.
+Shell work the user should see. Open a terminal when the user should watch, attach or take over, as with SSH. Keep one-shot local commands in your normal tools. Call list_terminals first and reuse a running terminal when possible. Use send_terminal and read_terminal, and close_terminal when that job is done unless it is left for the user.
 
-Bugs and ideas. When the user hits a bug in the manager itself or asks for something it lacks, offer report_issue: it previews first and files only once the user approves.
+Bugs and ideas. When the user hits a bug in the manager or asks for something it lacks, offer report_issue: it previews first and files only once the user approves.
 
-Everything here acts on the user's machine: create_terminal starts a real process and send_terminal runs commands. Treat them with the care and approval normal shell execution needs.`
+Everything here acts on the user's machine: create_terminal starts a real process and send_terminal runs commands. Treat them with the care normal shell execution needs.`
 
 // crossSessionTools reach beyond the calling session: they list, spawn,
 // read, drive and end the other sessions, and share the task list and
@@ -525,6 +532,34 @@ func newServer(configDir, sessionID, version string, coordination bool, terminal
 			return textContent("deleted task " + args.TaskID), taskOutput{}, nil
 		default:
 			return nil, taskOutput{}, fmt.Errorf("unknown action %q (list, create, claim, finish, release, delete)", args.Action)
+		}
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "note",
+		Description: "The standing note on the group this session is filed under: what the work is for, and what has already been settled about it. " +
+			"read it at the start of a task, before asking the user for context the group may already carry, and whenever you are about to make a decision the group has likely made before. " +
+			"append when you learn something the next agent in this group would otherwise have to rediscover: a decision and why, a constraint, a gotcha, where something lives. " +
+			"Append it the moment the user states it, and when you settle a question yourself. " +
+			"Keep it to a few lines, written for someone who has not seen this conversation; it is a brief, not a log of what you did. " +
+			"Appending never overwrites what is there, so the user's own text and another session's are both kept. The user reads and edits the same note in Agent Manager.",
+		Annotations: toolAnnotations(false, false, false),
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args noteArgs) (*mcp.CallToolResult, sessioncmd.GroupNote, error) {
+		switch args.Action {
+		case "", "read":
+			note, err := sessions.Note(sessionID)
+			if err != nil {
+				return nil, sessioncmd.GroupNote{}, err
+			}
+			return textContent(sessioncmd.FormatGroupNote(note)), note, nil
+		case "append":
+			note, err := sessions.AppendNote(sessionID, args.Note)
+			if err != nil {
+				return nil, sessioncmd.GroupNote{}, err
+			}
+			return textContent(sessioncmd.FormatGroupNote(note)), note, nil
+		default:
+			return nil, sessioncmd.GroupNote{}, fmt.Errorf("unknown action %q (read, append)", args.Action)
 		}
 	})
 
