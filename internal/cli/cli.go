@@ -41,6 +41,7 @@ func sections(version string) []section {
 	return []section{
 		sessionSection(),
 		taskSection(),
+		noteSection(),
 		fileSection(),
 		terminalSection(),
 		reviewSection(),
