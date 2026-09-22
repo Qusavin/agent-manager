@@ -63,3 +63,24 @@ func TestParseStoresACyrillicKeyAsItsLatinSpelling(t *testing.T) {
 		t.Fatalf("о parsed as %q, want j", plain.Tea())
 	}
 }
+
+// A tmux binding is registered by name, so an alt key needs the Russian
+// character's name as well; ctrl and named keys arrive layout-independent
+// and get none.
+func TestTmuxTwinNamesTheRussianKeyForAltOnly(t *testing.T) {
+	for _, tc := range []struct{ spec, want string }{
+		{"alt+h", "M-р"},
+		{"alt+q", "M-й"},
+		{"alt+1", ""},
+		{"ctrl+q", ""},
+		{"f3", ""},
+	} {
+		key, err := Parse(tc.spec)
+		if err != nil {
+			t.Fatalf("parse %q: %v", tc.spec, err)
+		}
+		if got := key.TmuxTwin(); got != tc.want {
+			t.Errorf("Parse(%q).TmuxTwin() = %q, want %q", tc.spec, got, tc.want)
+		}
+	}
+}

@@ -484,13 +484,13 @@ func (d *Driver) EnsureBindings() error {
 		commands = append(commands, []string{"unbind-key", "-T", "root", key})
 	}
 	for _, key := range keys.Binding(keybind.Detach).Keys() {
-		commands = append(commands, rootBinding(key, "detach-client"))
+		commands = append(commands, rootBindings(key, "detach-client")...)
 	}
 	for _, key := range keys.Binding(keybind.Review).Keys() {
-		commands = append(commands, rootBinding(key, request(RequestReview)))
+		commands = append(commands, rootBindings(key, request(RequestReview))...)
 	}
 	for _, key := range keys.Binding(keybind.Editor).Keys() {
-		commands = append(commands, rootBinding(key, request(RequestEditor)))
+		commands = append(commands, rootBindings(key, request(RequestEditor))...)
 	}
 	// Restore the standard fallback when the prefix shadows a direct binding.
 	commands = append(commands, []string{"bind-key", "-T", "prefix", "d", "detach-client"})
@@ -498,12 +498,24 @@ func (d *Driver) EnsureBindings() error {
 	return err
 }
 
+// rootBindings is one key's root bindings: its own name, and the Russian
+// layout's name for the same physical button where there is one. tmux
+// matches the character the terminal sends, so alt+h arrives as M-р with
+// the keyboard switched and would otherwise fall through to the pane.
+func rootBindings(key keybind.Key, action string) [][]string {
+	bindings := [][]string{rootBinding(key.Tmux(), action)}
+	if twin := key.TmuxTwin(); twin != "" {
+		bindings = append(bindings, rootBinding(twin, action))
+	}
+	return bindings
+}
+
 // rootBinding binds a key inside managed sessions only; anywhere else on
 // the server the key goes through to the pane as itself. That branch is a
 // command string tmux parses, so a backslash in the key name is doubled.
-func rootBinding(key keybind.Key, action string) []string {
-	passThrough := "send-keys " + strings.ReplaceAll(key.Tmux(), `\`, `\\`)
-	return []string{"bind-key", "-n", key.Tmux(), "if-shell", "-F", ownedBindingTest, action, passThrough}
+func rootBinding(name, action string) []string {
+	passThrough := "send-keys " + strings.ReplaceAll(name, `\`, `\\`)
+	return []string{"bind-key", "-n", name, "if-shell", "-F", ownedBindingTest, action, passThrough}
 }
 
 // ownedRootBindings lists the root-table keys carrying the manager's own

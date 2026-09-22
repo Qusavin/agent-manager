@@ -46,3 +46,35 @@ func Latin(key string) string {
 	}
 	return mods + string(latin)
 }
+
+// cyrillicByLatin is latinByCyrillic read backwards. Surfaces that register
+// a key by name rather than matching one - a tmux binding is the case - have
+// to name the Russian character too: tmux compares what the terminal sends,
+// and a switched layout sends the other character.
+var cyrillicByLatin = func() map[rune]rune {
+	back := make(map[rune]rune, len(latinByCyrillic))
+	for cyrillic, latin := range latinByCyrillic {
+		back[latin] = cyrillic
+	}
+	return back
+}()
+
+// TmuxTwin is the tmux name this key answers to while the keyboard is on a
+// Russian layout, empty when it needs none. Only alt keys do: tmux reads
+// them as the character the layout types, where ctrl keys and named keys
+// arrive as themselves.
+func (k Key) TmuxTwin() string {
+	rest, isAlt := strings.CutPrefix(k.tmux, "M-")
+	if !isAlt {
+		return ""
+	}
+	runes := []rune(rest)
+	if len(runes) != 1 {
+		return ""
+	}
+	cyrillic, mapped := cyrillicByLatin[runes[0]]
+	if !mapped {
+		return ""
+	}
+	return "M-" + string(cyrillic)
+}

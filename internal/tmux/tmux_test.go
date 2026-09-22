@@ -1461,3 +1461,31 @@ func TestSessionFooterNamesTheConfiguredKeys(t *testing.T) {
 		t.Fatalf("footer should name the configured keys only, got %q", footer)
 	}
 }
+
+// An alt key is bound twice: tmux matches the character the terminal sends,
+// so the same physical button needs the Russian layout's name too. A ctrl
+// key arrives as a control byte whatever the layout is, and is bound once.
+func TestRootBindingsCoverARussianLayoutForAltKeys(t *testing.T) {
+	altH, err := keybind.Parse("alt+h")
+	if err != nil {
+		t.Fatalf("parse alt+h: %v", err)
+	}
+	bindings := rootBindings(altH, "detach-client")
+	if len(bindings) != 2 {
+		t.Fatalf("alt+h produced %d bindings, want 2: %v", len(bindings), bindings)
+	}
+	if bindings[0][2] != "M-h" || bindings[1][2] != "M-р" {
+		t.Fatalf("alt+h bound %q and %q, want M-h and M-р", bindings[0][2], bindings[1][2])
+	}
+	if !strings.Contains(bindings[1][len(bindings[1])-1], "M-р") {
+		t.Fatalf("the russian binding passes through %q, want M-р", bindings[1][len(bindings[1])-1])
+	}
+
+	ctrlQ, err := keybind.Parse("ctrl+q")
+	if err != nil {
+		t.Fatalf("parse ctrl+q: %v", err)
+	}
+	if bindings := rootBindings(ctrlQ, "detach-client"); len(bindings) != 1 {
+		t.Fatalf("ctrl+q produced %d bindings, want 1: %v", len(bindings), bindings)
+	}
+}
