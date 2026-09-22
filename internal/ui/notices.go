@@ -733,7 +733,7 @@ func delegatedUpdateResult(manager update.Manager, execPath string, err error) u
 
 func (m *Model) handleNoticesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	notices := m.activeNotices()
-	switch msg.String() {
+	switch keyName(msg) {
 	case "r":
 		if m.update.refreshing {
 			return m, nil

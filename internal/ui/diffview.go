@@ -1223,7 +1223,7 @@ func (m *Model) handleDiffKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleAnnotateKey(msg)
 	}
 	if m.diff.sendConfirm {
-		switch msg.String() {
+		switch keyName(msg) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "enter", "y":
@@ -1235,7 +1235,7 @@ func (m *Model) handleDiffKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	height := m.diffCodeHeight()
-	switch msg.String() {
+	switch keyName(msg) {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "q", "esc":

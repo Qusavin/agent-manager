@@ -1041,7 +1041,7 @@ func (m *Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.mode = modeList
 		}
 	}()
-	switch msg.String() {
+	switch keyName(msg) {
 	case "y", "enter":
 		switch m.confirm.action {
 		case actionArchive:

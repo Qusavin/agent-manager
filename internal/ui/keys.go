@@ -10,6 +10,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// keyName is a key press as the switches below read it: the terminal's own
+// spelling, with a character typed on a Russian layout folded back to the
+// key its physical button carries. Text fields keep msg.String() - what was
+// typed there is the text, not a command.
+func keyName(msg tea.KeyMsg) string { return keybind.Latin(msg.String()) }
+
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// A drag armed by the mouse alone leaves the keyboard live, so a press
 	// whose release never lands cannot strand the list: the next key ends

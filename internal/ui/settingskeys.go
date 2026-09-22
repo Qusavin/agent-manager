@@ -89,14 +89,14 @@ func (m *Model) handleKeyPickerKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.answerKeyReset(msg)
 	}
 	count := len(keyRowsOf(m.settings.tables))
-	switch msg.String() {
+	switch keyName(msg) {
 	case "up", "k":
 		m.settings.keyCursor = (m.settings.keyCursor + count - 1) % count
 	case "down", "j":
 		m.settings.keyCursor = (m.settings.keyCursor + 1) % count
 	case "enter", "a":
 		m.settings.keyCapture = true
-		m.settings.keyAppend = msg.String() == "a"
+		m.settings.keyAppend = keyName(msg) == "a"
 		m.errBar.text = ""
 	case "d":
 		return m, m.setBinding(keybind.Keys())
@@ -136,7 +136,7 @@ func (m *Model) captureKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) answerKeyReset(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	switch keyName(msg) {
 	case "y", "enter":
 		for i, keys := range m.settings.tables {
 			m.settings.tables[i] = keys.Defaults()

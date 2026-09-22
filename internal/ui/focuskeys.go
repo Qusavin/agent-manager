@@ -287,7 +287,7 @@ func (m *Model) leaveFocus() tea.Cmd {
 // returns to the list, review opens the diff and editor the directory.
 // Every plain character - q included - reaches the agent.
 func (m *Model) handleFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.keys.Binding(keybind.Detach).Has(msg.String()) {
+	if m.keys.Binding(keybind.Detach).Has(keyName(msg)) {
 		return m, m.leaveFocus()
 	}
 	sess, ok := m.selected()
@@ -296,12 +296,12 @@ func (m *Model) handleFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	// A windowed editor leaves the focus where it is; one that draws in the
 	// terminal takes it back on exit.
-	if m.keys.Binding(keybind.Editor).Has(msg.String()) {
+	if m.keys.Binding(keybind.Editor).Has(keyName(msg)) {
 		return m.openEditor()
 	}
 	// Closing the review focuses the session again rather than landing in
 	// the list.
-	if m.keys.Binding(keybind.Review).Has(msg.String()) {
+	if m.keys.Binding(keybind.Review).Has(keyName(msg)) {
 		m.clearSelection()
 		cmd := m.openDiff()
 		if m.mode == modeDiff {

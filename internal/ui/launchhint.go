@@ -127,7 +127,7 @@ func dropImages(images []imageAttachment) {
 }
 
 func (m *Model) handleLaunchHintKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	switch keyName(msg) {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "c":

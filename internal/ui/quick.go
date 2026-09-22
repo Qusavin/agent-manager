@@ -67,7 +67,10 @@ func (m *Model) spawnToolSelection() ([]string, int) {
 // keep moving the selection (the target follows the cursor), enter submits
 // against whatever is selected, and every other key is typed text.
 func (m *Model) handleQuickKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	// The bar's own keys are named or alt-prefixed, so folding a Russian
+	// layout here cannot swallow a character: typed text falls through to
+	// the composer with the key as it came.
+	switch keyName(msg) {
 	case "esc":
 		m.quick.active = false
 		// Reopening the bar starts a fresh prompt, so the images this one

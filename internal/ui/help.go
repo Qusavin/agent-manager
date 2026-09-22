@@ -475,7 +475,7 @@ func (m *Model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.help.searching {
 		return m.handleHelpSearchKey(msg)
 	}
-	switch msg.String() {
+	switch keyName(msg) {
 	case "esc":
 		if m.help.query != "" {
 			m.help.query = ""
