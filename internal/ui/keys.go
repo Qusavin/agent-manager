@@ -84,6 +84,11 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleHelpKey(msg)
 	}
 
+	// The label overlay owns the keyboard while it is up: every key it
+	// reads is either a label or the gesture's cancel.
+	if m.jump.active {
+		return m.handleJumpKey(msg)
+	}
 	if m.searching {
 		return m.handleSearchKey(msg)
 	}
@@ -110,14 +115,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case keybind.ReorderDown:
 		return m.reorderSelected(1)
 	case keybind.Open:
-		if entry, ok := m.selectedRow(); ok && entry.isGroup {
-			m.toggleCollapse()
-			return m, nil
-		}
-		if m.enterFocuses() {
-			return m.focusSelected()
-		}
-		return m.attachSelected()
+		return m.openSelected()
+	case keybind.Jump:
+		m.openJump()
+		return m, nil
 	case keybind.StepIn:
 		if !m.arrowStep {
 			return m, nil
@@ -210,6 +211,20 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // schedules a debounced preview fetch. Key-repeat only bumps the gen; a
 // single capture runs after the cursor settles so holding j/k cannot pile
 // up tmux work.
+// openSelected is what enter does to the row under the cursor: a group
+// folds, a session opens the way the settings pair it with, focused or
+// attached. A jump label lands on a row by the same door.
+func (m *Model) openSelected() (tea.Model, tea.Cmd) {
+	if entry, ok := m.selectedRow(); ok && entry.isGroup {
+		m.toggleCollapse()
+		return m, nil
+	}
+	if m.enterFocuses() {
+		return m.focusSelected()
+	}
+	return m.attachSelected()
+}
+
 func (m *Model) moveCursor(delta int) tea.Cmd {
 	if len(m.rows) == 0 {
 		return nil

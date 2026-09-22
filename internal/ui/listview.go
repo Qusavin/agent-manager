@@ -397,6 +397,7 @@ func (m *Model) entryLines(rows []treeRow, offset, width, height int) []contentL
 	}
 	start, end := railWindow(heights, m.cursor-offset, height, m.railTop)
 	m.railTop = start
+	m.labelJumpRows(start, end, offset)
 
 	var lines []contentLine
 	for i := start; i < end; i++ {
@@ -637,9 +638,9 @@ func (m *Model) renderTreeRow(entry treeRow, selected bool, width, index int, bg
 	}
 
 	if entry.isGroup {
-		return m.renderGroupEntry(entry, selected, width, pad, guides, trail, bg)
+		return m.renderGroupEntry(entry, selected, width, index, pad, guides, trail, bg)
 	}
-	return m.renderSessionEntry(entry, selected, width, pad, guides, trail, bg)
+	return m.renderSessionEntry(entry, selected, width, index, pad, guides, trail, bg)
 }
 
 // A shell takes a caret rather than an idle dot it would never leave, but
@@ -725,7 +726,7 @@ func promptPreview(prompt string) string {
 	return ansi.Truncate(strings.Join(words, " "), placeholderPromptWidth, "…")
 }
 
-func (m *Model) renderSessionEntry(entry treeRow, selected bool, width int, pad, guides, trail, bg string) string {
+func (m *Model) renderSessionEntry(entry treeRow, selected bool, width, index int, pad, guides, trail, bg string) string {
 	sess := entry.sess
 	// An archived session's pane was killed on its way in; a status frozen
 	// by an older build (a "working" from before the kill recorded dead)
@@ -734,6 +735,11 @@ func (m *Model) renderSessionEntry(entry treeRow, selected bool, width int, pad,
 		sess.Status = status.Dead
 	}
 	dot := m.sessionGlyph(sess)
+	// While the overlay is up the label takes the dot's cell: the column
+	// holds, and the status is still written out in words beside it.
+	if mark := m.jumpMark(index); mark != "" {
+		dot = mark
+	}
 	nameStyle := valueStyle
 	if selected {
 		nameStyle = lipgloss.NewStyle().Foreground(colorBright).Bold(true)
@@ -900,7 +906,7 @@ func metaIndent(pad, trail string) string {
 	return pad + trail + "  "
 }
 
-func (m *Model) renderGroupEntry(entry treeRow, selected bool, width int, pad, guides, trail, bg string) string {
+func (m *Model) renderGroupEntry(entry treeRow, selected bool, width, index int, pad, guides, trail, bg string) string {
 	marker := "▾"
 	if m.collapsed[entry.group] {
 		marker = "▸"
@@ -917,7 +923,11 @@ func (m *Model) renderGroupEntry(entry treeRow, selected bool, width int, pad, g
 			nameStyle = nameStyle.Foreground(lipgloss.Color(mix(current.Accent2, current.Subtle, 0.5)))
 		}
 	}
-	head := pad + guides + subtleStyle.Render(marker) + " " + m.highlightQuery(name, nameStyle)
+	glyph := subtleStyle.Render(marker)
+	if mark := m.jumpMark(index); mark != "" {
+		glyph = mark
+	}
+	head := pad + guides + glyph + " " + m.highlightQuery(name, nameStyle)
 	// A group carrying a note says so beside its name, so standing context
 	// is visible from the tree rather than only once the card is open.
 	if m.groupNote(entry.group) != "" {

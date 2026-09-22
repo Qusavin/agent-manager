@@ -239,6 +239,7 @@ const (
 	Attach      = "attach"
 	StepIn      = "step_in"
 	StepOut     = "step_out"
+	Jump        = "jump"
 	NewSession  = "new_session"
 	Terminal    = "terminal"
 	NewGroup    = "new_group"
@@ -286,6 +287,7 @@ var listActions = []Action{
 	{Attach, "session: attach it (or focus)", keys("A")},
 	{StepIn, "step in: focus the session, open the group", keys("right")},
 	{StepOut, "step out: close the group", keys("left")},
+	{Jump, "label every row and jump to the one you type", keys(";")},
 	{ReorderUp, "move the row up among its siblings", keys("shift+up", "K")},
 	{ReorderDown, "move the row down among its siblings", keys("shift+down", "J")},
 	{NewSession, "new session", keys("n")},

@@ -210,6 +210,9 @@ type Model struct {
 	collapsed       map[string]bool
 	search          string
 	searching       bool
+	// jump is the label overlay, raised by the jump key and down again as
+	// soon as the label it asked for is read.
+	jump jumpState
 
 	diff      diffState
 	form      form
