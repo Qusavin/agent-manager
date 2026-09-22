@@ -44,9 +44,30 @@ func TestJumpLabelsRunDownThePaintedRows(t *testing.T) {
 	}
 }
 
-// A capital label parks the cursor rather than opening the row, which is
-// what makes a jump usable as the step before any other key.
-func TestJumpCapitalOnlyMovesTheCursor(t *testing.T) {
+// A label parks the cursor on its row and nothing more: the row stays
+// closed, so the next key decides what happens to it.
+func TestJumpLandsTheCursorOnTheLabelledRow(t *testing.T) {
+	m := raiseJump(t, shotModel())
+	target, ok := m.jump.rows['d']
+	if !ok {
+		t.Fatal("no row wears the d label")
+	}
+	updated, _ := m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
+	m = updated.(*Model)
+	if m.jump.active {
+		t.Fatal("the overlay stayed up after a label was read")
+	}
+	if m.cursor != target {
+		t.Fatalf("d left the cursor at %d, want %d", m.cursor, target)
+	}
+	if m.mode != modeList {
+		t.Fatalf("a label opened the row; mode = %v", m.mode)
+	}
+}
+
+// A label caught with shift still reads as itself rather than cancelling
+// the jump it was aimed at.
+func TestJumpReadsAShiftedLabel(t *testing.T) {
 	m := raiseJump(t, shotModel())
 	target, ok := m.jump.rows['d']
 	if !ok {
@@ -54,14 +75,8 @@ func TestJumpCapitalOnlyMovesTheCursor(t *testing.T) {
 	}
 	updated, _ := m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("D")})
 	m = updated.(*Model)
-	if m.jump.active {
-		t.Fatal("the overlay stayed up after a label was read")
-	}
 	if m.cursor != target {
 		t.Fatalf("D left the cursor at %d, want %d", m.cursor, target)
-	}
-	if m.mode != modeList {
-		t.Fatalf("a capital label opened the row; mode = %v", m.mode)
 	}
 }
 
@@ -102,8 +117,9 @@ func TestJumpReadsALabelOnARussianLayout(t *testing.T) {
 	}
 }
 
-// A lowercase label opens the row it lands on, the same door enter uses.
-func TestJumpOpensTheRowItLandsOn(t *testing.T) {
+// The jump never opens a session, whatever the enter pairing is set to:
+// selecting is the whole gesture.
+func TestJumpLeavesTheRowClosed(t *testing.T) {
 	m := buildModel(t)
 	dir := t.TempDir()
 	createSessionOn(t, m, "jump-one", "quietchat", dir)
@@ -112,16 +128,17 @@ func TestJumpOpensTheRowItLandsOn(t *testing.T) {
 	m.cursor = 0
 	m = raiseJump(t, m)
 
-	label, ok := m.jump.labels[len(m.rows)-1]
+	last := len(m.rows) - 1
+	label, ok := m.jump.labels[last]
 	if !ok {
 		t.Fatal("the last row was never labelled")
 	}
 	updated, _ := m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{label}})
 	m = updated.(*Model)
-	if m.cursor != len(m.rows)-1 {
-		t.Fatalf("the label left the cursor at %d, want %d", m.cursor, len(m.rows)-1)
+	if m.cursor != last {
+		t.Fatalf("the label left the cursor at %d, want %d", m.cursor, last)
 	}
-	if m.mode != modeFocus {
-		t.Fatalf("the label did not open the row; mode = %v", m.mode)
+	if m.mode != modeList {
+		t.Fatalf("the label opened the row; mode = %v", m.mode)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // jumpAlphabet is the order labels are handed out in, written for ten
@@ -66,14 +65,14 @@ func (m *Model) jumpMark(index int) string {
 	if !ok {
 		return ""
 	}
-	return lipgloss.NewStyle().Foreground(colorBright).Background(colorAccent).Bold(true).Render(string(label))
+	return jumpLabelStyle.Render(string(label))
 }
 
-// handleJumpKey reads the label and lands on its row. A lowercase label
-// opens the row the way enter would; its capital parks the cursor there
-// instead, which is how a jump becomes the step before any other key.
-// Anything that is not a label closes the overlay without acting: a
-// mistyped jump should leave the list exactly as it was.
+// handleJumpKey reads the label and parks the cursor on its row. It only
+// selects: opening the row is the next key's business, so a jump can be
+// the step before any of them rather than a door that commits to one.
+// A shifted label still reads, and anything that is not a label closes the
+// overlay without acting: a mistyped jump should leave the list as it was.
 func (m *Model) handleJumpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := keyName(msg)
 	if key == "ctrl+c" {
@@ -84,21 +83,11 @@ func (m *Model) handleJumpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.closeJump()
 		return m, nil
 	}
-	label, open := typed[0], true
-	// Only a letter has a capital to tell apart; a label like ; or . is
-	// always the opening kind.
-	if unicode.IsUpper(label) {
-		label, open = unicode.ToLower(label), false
-	}
+	label := unicode.ToLower(typed[0])
 	index, found := m.jump.rows[label]
 	m.closeJump()
 	if !found {
 		return m, nil
 	}
-	cmd := m.selectRow(index)
-	if !open {
-		return m, cmd
-	}
-	model, openCmd := m.openSelected()
-	return model, tea.Batch(cmd, openCmd)
+	return m, m.selectRow(index)
 }

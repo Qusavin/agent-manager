@@ -84,7 +84,7 @@ func listHelpRows(list keybind.Table, arrowStep bool) [][2]string {
 		h.action("step in: focus the session, open the group", keybind.StepIn)
 		h.action("step out: close the group", keybind.StepOut)
 	}
-	h.action("label every row; type one to jump, its capital to just point", keybind.Jump)
+	h.action("label every row; type a label to put the cursor on that row", keybind.Jump)
 	h.action("reorder the row up among its siblings", keybind.ReorderUp)
 	h.action("reorder the row down among its siblings", keybind.ReorderDown)
 	h.action("new session", keybind.NewSession)
